@@ -4,3 +4,4 @@ version = "0.1.0"
 authors = ["Ben Batha <bhbatha@gmail.com>"]
 
 [dependencies]
+id_tree = "^1.1"
