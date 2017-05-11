@@ -1,91 +1,65 @@
-extern crate id_tree;
+#[derive(Debug, Eq, PartialEq)]
+pub enum VNode {
+    Element {
+        tag: &'static str,
+        children: Vec<VNode>,
+    },
+    Text(String),
+    Empty,
+}
 
-use id_tree::{Tree, Node, NodeId, NodeIdError, InsertBehavior};
+pub trait Component {
+    fn render(&self) -> VNode;
+}
 
-struct VNode {
-    tag: String,
-    children: Vec<VNode>,
-};
-
-impl VNode {
-    fn new_root() -> VNode {
-        VNode()
+impl Component for &'static str {
+    fn render(&self) -> VNode {
+        VNode::Text(self.to_string())
     }
 }
 
-trait Render {
-    fn render(&self, tree: &mut VTree);
+#[derive(Default, Eq, PartialEq)]
+pub struct Div<C> {
+    children: Vec<C>
 }
 
-
-
-impl VTree {
-    fn new() -> VTree { 
-        let mut tree = Tree::new();
-        let root = VNode::new_root();
-        let root_id = tree.insert(Node::new(root), InsertBehavior::AsRoot).expect("fresh");
-        VTree {
-            tree: tree,
-            cursor: root_id.clone()
-         }
-    }
-
-    fn insert_vnode(&mut self, vnode: VNode) -> Result<NodeId, NodeIdError> {
-        self.tree.insert(Node::new(vnode), InsertBehavior::UnderNode(&self.cursor))
-    }
-
-    fn insert_children<R: Render>(&mut self, parent: NodeId, children: &[R]) {
-        let prev_cursor = self.cursor.clone();
-        self.cursor = parent;
-
-        for renderable in children {
-            renderable.render(self);
+impl<C: Component> Div<C> {
+    pub fn new() -> Self {
+        Div {
+            children: Vec::new(),
         }
-
-        self.cursor = prev_cursor;
     }
 
-    fn create_patch_set(&self, old_tree: &VTree) {
-    }
-}
-
-impl Div {
-    fn new<R: Render>(children: &[R]) {
-    }
-    
-    fn render() -> VNode {
-        let childVNodes = Vec::new();
-        
-        for child in this.children {
-            childVNodes.push(generateTree(child));
+    pub fn with_children(children: Vec<C>) -> Self {
+        Div {
+            children
         }
-
-        return VNode {
-            tag: 'div',
-            children: childVNodes,
-        };
     }
 }
 
-
-impl Component {
-    fn render() -> VNode {
-        div = Div::new();
-        child = OtherComponent::new();
-        div.appendChild(OtherComponent);
-        return div.render();
-
-
-        div.appendChild(OtherComponent.render());
+impl<C: Component> Component for Div<C> {
+    fn render(&self) -> VNode {
+        VNode::Element {
+            tag: "div",
+            children: self.children.iter().map(Component::render).collect(),
+        }
     }
 }
 
-let lastTree = EMPTY_TREE;
-loop {
-    let component = MyComponent::new(currentState);
-    h(component)
-    let newTree = MyComponent;
-    let patchSet = patch(lastTree, newTree);
-    applyPatch(patchSet, domElement);
-    lastTree = newTee;
+impl Component for () {
+    fn render(&self) -> VNode {
+        VNode::Empty
+    }
+}
+
+#[test]
+fn render_div() {
+    let div: Div<()> = Div::new();
+    assert_eq!(VNode::Element{ tag: "div", children: vec![]}, div.render());
+}
+
+#[test]
+fn render_text_div() {
+    let div = Div::with_children(vec!["test"]);
+    assert_eq!(VNode::Element{ tag: "div", children: vec![VNode::Text("test".to_string())]}, div.render())
 }
