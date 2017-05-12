@@ -6,3 +6,4 @@ authors = ["Ben Batha <bhbatha@gmail.com>"]
 [dependencies]
 ordermap = "^0.2"
 snowflake = "^1.0"
+id_tree = "^1.1"

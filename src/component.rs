@@ -31,8 +31,13 @@ impl<C: Component> Div<C> {
 }
 
 impl<C: Component> Component for Div<C> {
-    fn render(&self) -> VNode {
-        VNode::new_element("div", self.children.iter().map(Component::render))
+    fn render(&self, document) -> VNode {
+        let div_root = document.new_element("div");
+        let child = self.child.render(document);
+
+        document.append(child, div_root);
+
+        return div_root;
     }
 }
 
@@ -59,5 +64,5 @@ fn render_keyed() {
     let keyed = KeyedComponent(key, div);
     let mut actual = VNode::new_element("div", Vec::new());
     actual.set_key(&key);
-    assert_eq!(actual, keyed.render());
+    assert_eq!(actual.key, keyed.render().key);
 }

@@ -1,8 +1,9 @@
 extern crate ordermap;
 extern crate snowflake;
+extern crate id_tree;
 
 pub use component::*;
-pub use vnode::*;
 
 mod component;
-mod vnode;
+mod diff;
+mod document;
