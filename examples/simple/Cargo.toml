@@ -1,0 +1,8 @@
+[package]
+name = "simple"
+version = "0.1.0"
+authors = ["Ben Batha <bbatha@factset.com>"]
+
+[dependencies]
+stdweb = "^0.1"
+rende = { path = "../.." }
