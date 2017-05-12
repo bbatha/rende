@@ -1,8 +1,11 @@
 use std::collections::BTreeMap;
-use ordermap;
 use std::iter;
 use std::hash::{Hasher, Hash};
 use std::collections::hash_map::DefaultHasher;
+
+use ordermap;
+use stdweb::web::INode;
+
 use component::{self, Component};
 
 #[derive(Ord, PartialOrd, Eq, PartialEq, Hash, Default, Debug, Copy, Clone)]
@@ -31,7 +34,7 @@ pub enum Patch {
 type ParentId = NodeId;
 type ChildId = NodeId;
 
-#[derive(Default)]
+#[derive(Debug, Eq, PartialEq, Ord, PartialOrd, Default)]
 struct KeyMap {
     key_to_id: BTreeMap<Key, NodeId>,
     id_to_key: BTreeMap<NodeId, Key>,
@@ -54,12 +57,14 @@ impl KeyMap {
     }
 }
 
+#[derive(Debug, Eq, PartialEq, Ord, PartialOrd)]
 enum VNode {
     Root,
     Element(&'static str),
     Text(String),
 }
 
+#[derive(Debug)]
 pub struct VDocument {
     nodes: Vec<VNode>,
     keys: BTreeMap<ParentId, KeyMap>,
@@ -173,4 +178,16 @@ fn delete_element() {
     let expected = vec![Patch::Reuse(ROOT_ID, ROOT_ID), Patch::Delete(NodeId(1))];
 
     assert_eq!(patches, expected);
+}
+
+#[derive(Debug, Default)]
+pub struct RenderedDocument<I> {
+    vdoc: VDocument,
+    dom_nodes: BTreeMap<NodeId, I>
+}
+
+impl<I: INode> RenderedDocument<I> {
+    pub fn associate(&mut self, id: NodeId, node: I) -> Option<I> {
+        self.dom_nodes.insert(id, node)
+    }
 }
