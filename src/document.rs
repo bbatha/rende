@@ -1,7 +1,9 @@
 use std::collections::BTreeMap;
 use ordermap;
+use std::iter;
 use std::hash::{Hasher, Hash};
 use std::collections::hash_map::DefaultHasher;
+use component::{self, Component};
 
 #[derive(Ord, PartialOrd, Eq, PartialEq, Hash, Default, Debug, Copy, Clone)]
 pub struct NodeId(usize);
@@ -18,21 +20,72 @@ impl<H: Hash> From<H> for Key {
     }
 }
 
+#[derive(Debug, Eq, PartialEq)]
+pub enum Patch {
+    Reuse(NodeId, NodeId),
+    Create(NodeId),
+    Delete(NodeId),
+    Append(),
+}
+
 type ParentId = NodeId;
 type ChildId = NodeId;
 
+#[derive(Default)]
+struct KeyMap {
+    key_to_id: BTreeMap<Key, NodeId>,
+    id_to_key: BTreeMap<NodeId, Key>,
+}
+
+impl KeyMap {
+    fn insert(&mut self, id: NodeId, key: Key) {
+        let a = self.key_to_id.insert(key, id);
+        let b = self.id_to_key.insert(id, key);
+
+        assert!(a.is_none() && b.is_none(), "Key already in use");
+    }
+
+    fn get_id(&self, key: Key) -> Option<NodeId> {
+        self.key_to_id.get(&key).cloned()
+    }
+
+    fn get_key(&self, id: NodeId) -> Option<Key> {
+        self.id_to_key.get(&id).cloned()
+    }
+}
+
 enum VNode {
+    Root,
     Element(&'static str),
     Text(String),
 }
 
 pub struct VDocument {
     nodes: Vec<VNode>,
-    key_to_index: BTreeMap<Key, NodeId>,
+    keys: BTreeMap<ParentId, KeyMap>,
     children: BTreeMap<ParentId, ordermap::OrderMap<ChildId, ()>>,
 }
 
+impl Default for VDocument {
+    fn default() -> Self {
+        VDocument {
+            nodes: vec![VNode::Root],
+            keys: Default::default(),
+            children: Default::default(),
+        }
+    }
+}
+
+const ROOT_ID: NodeId = NodeId(0);
+
 impl VDocument {
+    pub fn from_component<C: Component>(component: C) -> VDocument {
+        let mut new_doc = VDocument::default();
+        let child = component.render(&mut new_doc);
+        new_doc.append_child(ROOT_ID, child);
+        new_doc
+    }
+
     pub fn create_element(&mut self, tag: &'static str) -> NodeId {
         let node = VNode::Element(tag);
         let next_index = self.nodes.len();
@@ -54,8 +107,70 @@ impl VDocument {
         children.insert(child, ());
     }
 
-    pub fn set_key<K: Into<Key>>(&mut self, node: NodeId, key: K) {
-        let previous_id = self.key_to_index.insert(key.into(), node);
-        assert!(previous_id.is_none(), "Key already in use");
+    pub fn set_key<K: Into<Key>>(&mut self, node: NodeId, key: K, parent: NodeId) {
+        let mut keys = self.keys.entry(parent).or_insert(Default::default());
+        keys.insert(node, key.into());
     }
+
+    pub fn get_root(&self) -> NodeId {
+        ROOT_ID
+    }
+
+    #[allow(dead_code)]
+    fn diff(&self, new_document: &VDocument) -> Vec<Patch> {
+        let mut patches = Vec::with_capacity(new_document.nodes.len());
+
+        let old_node = self.get_root();
+        let new_node = new_document.get_root();
+
+        patches.push(Patch::Reuse(old_node, new_node));
+
+        let empty_children = ordermap::OrderMap::default();
+        let old_children = self.children.get(&old_node).unwrap_or(&empty_children);
+        let new_children = new_document.children.get(&new_node).unwrap_or(&empty_children);
+
+        let mut old_children_iter = old_children.iter();
+        let mut new_children_iter = new_children.iter();
+
+        loop {
+            let old_child = old_children_iter.next().map(|(n, _)| *n);
+            let new_child = new_children_iter.next().map(|(n, _)| *n);
+
+            match (old_child, new_child) {
+                (None, Some(id)) => patches.push(Patch::Create(id)),
+                (Some(id), None) => patches.push(Patch::Delete(id)),
+                (Some(old_id), Some(new_id)) => {
+                    patches.push(Patch::Reuse(old_id, new_id));
+                    // TODO: Recurse
+                },
+                (None, None) => break,
+            }
+        }
+
+        patches
+    }
+}
+
+#[test]
+fn create_element() {
+    let old_doc = VDocument::default();
+    let div: component::Div<()> = component::Div::new();
+    let new_doc = VDocument::from_component(div);
+
+    let patches = old_doc.diff(&new_doc);
+    let expected = vec![Patch::Reuse(ROOT_ID, ROOT_ID), Patch::Create(NodeId(1))];
+
+    assert_eq!(patches, expected);
+}
+
+#[test]
+fn delete_element() {
+    let div: component::Div<()> = component::Div::new();
+    let old_doc = VDocument::from_component(div);
+    let new_doc = VDocument::default();
+
+    let patches = old_doc.diff(&new_doc);
+    let expected = vec![Patch::Reuse(ROOT_ID, ROOT_ID), Patch::Delete(NodeId(1))];
+
+    assert_eq!(patches, expected);
 }

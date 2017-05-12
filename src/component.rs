@@ -1,4 +1,4 @@
-use document::{VDocument, NodeId};
+use document::{VDocument, NodeId, Key};
 use std::hash;
 
 pub trait Component {
@@ -17,13 +17,15 @@ pub struct Div<C> {
     children: Vec<C>
 }
 
-impl<C: Component> Div<C> {
+impl<C> Div<C> {
     pub fn new() -> Self {
         Div {
             children: Vec::new(),
         }
     }
+}
 
+impl<C: Component> Div<C> {
     pub fn with_children(children: Vec<C>) -> Self {
         Div {
             children
@@ -42,14 +44,20 @@ impl<C: Component> Component for Div<C> {
     }
 }
 
+impl Component for Div<()> {
+    fn render(&self, doc: &mut VDocument) -> NodeId {
+        doc.create_element("div")
+    }
+}
+
 /// Use this type to compose a component and assign it a user friendly Id key
 #[derive(Debug, Default, Eq, PartialEq)]
-pub struct KeyedComponent<K, C>(K, C);
+pub struct KeyedComponent<C, K>(C, K, NodeId);
 
-impl<K: hash::Hash, C: Component> Component for KeyedComponent<K, C> {
+impl<K: Into<Key> + hash::Hash, C: Component> Component for KeyedComponent<K, C> {
     fn render(&self, doc: &mut VDocument) -> NodeId {
         let id = self.1.render(doc);
-        doc.set_key(id, &self.0);
+        doc.set_key(id, &self.0, self.2);
         id
     }
 }
