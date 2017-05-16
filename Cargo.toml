@@ -6,3 +6,6 @@ authors = ["Ben Batha <bhbatha@gmail.com>"]
 [dependencies]
 ordermap = "^0.2"
 stdweb = "^0.1"
+
+[[example]]
+name = "simple"
