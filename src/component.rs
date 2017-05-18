@@ -2,12 +2,12 @@ use document::{VDocument, NodeId, Key};
 use std::hash;
 
 pub trait Component {
-    fn render(&self, doc: &mut VDocument) -> NodeId;
+    fn render(&self, doc: &mut VDocument) -> Option<NodeId>;
 }
 
 impl Component for &'static str {
-    fn render(&self, doc: &mut VDocument) -> NodeId {
-        doc.create_text_node(*self)
+    fn render(&self, doc: &mut VDocument) -> Option<NodeId> {
+        Some(doc.create_text_node(*self))
     }
 }
 
@@ -34,19 +34,18 @@ impl<C: Component> Div<C> {
 }
 
 impl<C: Component> Component for Div<C> {
-    fn render(&self, doc: &mut VDocument) -> NodeId {
+    fn render(&self, doc: &mut VDocument) -> Option<NodeId> {
         let div_id = doc.create_element("div");
         for child in self.children.iter() {
-            let child_id = child.render(doc);
-            doc.append_child(div_id, child_id);
+            child.render(doc).and_then(|child| Some(doc.append_child(div_id, child)));
         }
-        div_id
+        Some(div_id)
     }
 }
 
 impl Component for Div<()> {
-    fn render(&self, doc: &mut VDocument) -> NodeId {
-        doc.create_element("div")
+    fn render(&self, doc: &mut VDocument) -> Option<NodeId> {
+        Some(doc.create_element("div"))
     }
 }
 
@@ -55,9 +54,10 @@ impl Component for Div<()> {
 pub struct KeyedComponent<C, K>(C, K, NodeId);
 
 impl<K: Into<Key> + hash::Hash, C: Component> Component for KeyedComponent<K, C> {
-    fn render(&self, doc: &mut VDocument) -> NodeId {
-        let id = self.1.render(doc);
-        doc.set_key(id, &self.0, self.2);
-        id
+    fn render(&self, doc: &mut VDocument) -> Option<NodeId> {
+        self.1.render(doc).and_then(|id| {
+            doc.set_key(id, &self.0, self.2);
+            Some(id)
+        })
     }
 }

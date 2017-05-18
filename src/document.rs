@@ -86,8 +86,7 @@ const ROOT_ID: NodeId = NodeId(0);
 impl VDocument {
     pub fn from_component<C: Component>(component: C) -> VDocument {
         let mut new_doc = VDocument::default();
-        let child = component.render(&mut new_doc);
-        new_doc.append_child(ROOT_ID, child);
+        component.render(&mut new_doc).and_then(|child| Some(new_doc.append_child(ROOT_ID, child)));
         new_doc
     }
 
