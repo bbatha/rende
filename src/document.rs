@@ -86,7 +86,9 @@ const ROOT_ID: NodeId = NodeId(0);
 impl VDocument {
     pub fn from_component<C: Component>(component: C) -> VDocument {
         let mut new_doc = VDocument::default();
-        component.render(&mut new_doc).and_then(|child| Some(new_doc.append_child(ROOT_ID, child)));
+        component
+            .render(&mut new_doc)
+            .and_then(|child| Some(new_doc.append_child(ROOT_ID, child)));
         new_doc
     }
 
@@ -94,9 +96,9 @@ impl VDocument {
         let node = VNode::Element(tag);
         let next_index = self.nodes.len();
         self.nodes.push(node);
-        
+
         NodeId(next_index)
-    } 
+    }
 
     pub fn create_text_node<I: Into<String>>(&mut self, content: I) -> NodeId {
         let node = VNode::Text(content.into());
@@ -105,9 +107,11 @@ impl VDocument {
 
         NodeId(next_index)
     }
-    
+
     pub fn append_child(&mut self, parent: NodeId, child: NodeId) {
-        let mut children = self.children.entry(parent).or_insert(ordermap::OrderMap::new());
+        let mut children = self.children
+            .entry(parent)
+            .or_insert(ordermap::OrderMap::new());
         children.insert(child, ());
     }
 
@@ -131,7 +135,10 @@ impl VDocument {
 
         let empty_children = ordermap::OrderMap::default();
         let old_children = self.children.get(&old_node).unwrap_or(&empty_children);
-        let new_children = new_document.children.get(&new_node).unwrap_or(&empty_children);
+        let new_children = new_document
+            .children
+            .get(&new_node)
+            .unwrap_or(&empty_children);
 
         let mut old_children_iter = old_children.iter();
         let mut new_children_iter = new_children.iter();
@@ -146,7 +153,7 @@ impl VDocument {
                 (Some(old_id), Some(new_id)) => {
                     patches.push(Patch::Reuse(old_id, new_id));
                     // TODO: Recurse
-                },
+                }
                 (None, None) => break,
             }
         }
@@ -182,7 +189,7 @@ fn delete_element() {
 #[derive(Debug, Default)]
 pub struct RenderedDocument<I> {
     vdoc: VDocument,
-    dom_nodes: BTreeMap<NodeId, I>
+    dom_nodes: BTreeMap<NodeId, I>,
 }
 
 impl<I: INode> RenderedDocument<I> {
@@ -190,3 +197,4 @@ impl<I: INode> RenderedDocument<I> {
         self.dom_nodes.insert(id, node)
     }
 }
+
