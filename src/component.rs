@@ -21,129 +21,6 @@ pub trait ParentComponent: Component {
     fn children_mut(&mut self) -> &mut Self::Children;
 }
 
-/// Composes a vector of child components
-#[derive(Default, Debug, Eq, PartialEq, Ord, PartialOrd, Hash, Clone)]
-pub struct Parent<P, C> {
-    parent: P,
-    children: Vec<C>,
-}
-
-/// Implementors of this trait can be composed into `Parent` and have a basic implementation
-/// of `ParentComponent` provided to you
-pub trait ParentAllowed {}
-impl<C: ParentComponent> ParentAllowed for C {}
-
-impl<P: ParentAllowed + Component, C: Component> Parent<P, C> {
-    pub fn new(parent: P) -> Self {
-        Parent {
-            parent,
-            children: Vec::new(),
-        }
-    }
-
-    pub fn with_children(parent: P, children: Vec<C>) -> Self {
-        Parent { parent, children }
-    }
-}
-
-impl<P: Component, C: Component> Component for Parent<P, C> {
-    fn render(&self, doc: &mut VDocument) -> Option<NodeId> {
-        if let Some(parent_id) = self.parent.render(doc) {
-            for child in self.children.iter() {
-                child
-                    .render(doc)
-                    .and_then(|child| Some(doc.append_child(parent_id, child)));
-            }
-            Some(parent_id)
-        } else {
-            None
-        }
-    }
-}
-
-impl<P: Component, C: Component> ParentComponent for Parent<P, C> {
-    type Children = Vec<C>;
-
-    fn children(&self) -> &Self::Children {
-        &self.children
-    }
-    fn children_mut(&mut self) -> &mut Self::Children {
-        &mut self.children
-    }
-}
-
-impl<P: PropertyComponent, C: Component> PropertyComponent for Parent<P, C> {
-    type Properties = P::Properties;
-
-    fn properties(&self) -> &Self::Properties {
-        self.parent.properties()
-    }
-    fn properties_mut(&mut self) -> &mut Self::Properties {
-        self.parent.properties_mut()
-    }
-}
-
-#[derive(Default, Debug, Eq, PartialEq, Ord, PartialOrd, Hash, Clone)]
-pub struct Propertied<C> {
-    component: C,
-    properties: BTreeMap<String, BTreeSet<String>>,
-}
-
-/// Implementors of this trait can be composed into `Propertied` and have a basic implementation
-/// of `PropertyComponent` provided to you
-pub trait PropertiesAllowed {}
-impl<C: PropertyComponent> PropertiesAllowed for C {}
-
-impl<C: PropertiesAllowed + Component> Propertied<C> {
-    pub fn new(component: C) -> Self {
-        Propertied {
-            component,
-            properties: BTreeMap::new(),
-        }
-    }
-
-    // TODO(bbatha): don't expose that our properties are a BTree* in our public api
-    pub fn with_properties(component: C, properties: BTreeMap<String, BTreeSet<String>>) -> Self {
-        Propertied {
-            component,
-            properties,
-        }
-    }
-}
-
-impl<C: Component> Component for Propertied<C> {
-    fn render(&self, doc: &mut VDocument) -> Option<NodeId> {
-        if let Some(parent_id) = self.component.render(doc) {
-            // TODO(bbatha): merge properties
-            Some(parent_id)
-        } else {
-            None
-        }
-    }
-}
-
-impl<C: ParentComponent> ParentComponent for Propertied<C> {
-    type Children = C::Children;
-
-    fn children(&self) -> &Self::Children {
-        &self.component.children()
-    }
-    fn children_mut(&mut self) -> &mut Self::Children {
-        self.component.children_mut()
-    }
-}
-
-impl<C: Component> PropertyComponent for Propertied<C> {
-    type Properties = BTreeMap<String, BTreeSet<String>>;
-
-    fn properties(&self) -> &Self::Properties {
-        &self.properties
-    }
-    fn properties_mut(&mut self) -> &mut Self::Properties {
-        &mut self.properties
-    }
-}
-
 /// Use this type to compose a component and assign it a user friendly Id key
 #[derive(Default, Debug, Eq, PartialEq, Ord, PartialOrd, Hash, Clone)]
 pub struct Keyed<C, K> {
@@ -191,51 +68,61 @@ impl Component for &'static str {
     }
 }
 
-/// HTML Div element with no children and no proprieties. These
-/// can be composed with `PropertiedComponent` and `ParentComponent`
-/// user key names can be added with `Keyed`.
+/// Empty type to use in place of `()` for `Div`s with no children. This
+/// type is needed until specialization is stabilized so that `render`
+/// can properly handle no children.
 #[derive(Default, Debug, Eq, PartialEq, Ord, PartialOrd, Hash, Clone)]
-pub struct EmptyDiv;
+pub struct Empty;
 
-impl Component for EmptyDiv {
+impl Component for Empty {
     fn render(&self, doc: &mut VDocument) -> Option<NodeId> {
-        Some(doc.create_element("div"))
+        None
     }
 }
 
-impl PropertiesAllowed for EmptyDiv {}
-impl ParentAllowed for EmptyDiv {}
-
 /// HTML div with children and properties
 #[derive(Default, Debug, Eq, PartialEq, Ord, PartialOrd, Hash, Clone)]
-pub struct Div<C>(Parent<Propertied<EmptyDiv>, C>);
+pub struct Div<C = Empty> {
+    children: Vec<C>,
+    properties: BTreeMap<String, BTreeSet<String>>,
+}
 
-impl<C: PropertiesAllowed + ParentAllowed + Component> Div<C> {
+impl<C> Div<C> {
     pub fn new() -> Self {
-        Div(Parent {
-                parent: Propertied::new(EmptyDiv),
-                children: Vec::new(),
-            })
+        Div {
+            properties: BTreeMap::new(),
+            children: Vec::new(),
+        }
     }
+    pub fn with_properties(properties: BTreeMap<String, BTreeSet<String>>) -> Self {
+        Div {
+            properties,
+            children: Vec::new(),
+        }
+    }
+}
 
+impl<C: Component> Div<C> {
     pub fn with_children(children: Vec<C>) -> Self {
-        Div(Parent {
-                parent: Propertied::new(EmptyDiv),
-                children,
-            })
-    }
-
-    pub fn with_properties(props: BTreeMap<String, BTreeSet<String>>) -> Self {
-        Div(Parent {
-                parent: Propertied::with_properties(EmptyDiv, props),
-                children: Vec::new(),
-            })
+        Div {
+            properties: BTreeMap::new(),
+            children,
+        }
     }
 }
 
 impl<C: Component> Component for Div<C> {
     fn render(&self, doc: &mut VDocument) -> Option<NodeId> {
-        self.0.render(doc)
+        let parent = doc.create_element("div");
+        for child in self.children.iter() {
+            child
+                .render(doc)
+                .and_then(|child| {
+                              doc.append_child(parent, child);
+                              Some(child)
+                          });
+        }
+        Some(parent)
     }
 }
 
@@ -243,11 +130,11 @@ impl<C: Component> ParentComponent for Div<C> {
     type Children = Vec<C>;
 
     fn children(&self) -> &Self::Children {
-        self.0.children()
+        &self.children
     }
 
     fn children_mut(&mut self) -> &mut Self::Children {
-        self.0.children_mut()
+        &mut self.children
     }
 }
 
@@ -255,17 +142,18 @@ impl<C: Component> PropertyComponent for Div<C> {
     type Properties = BTreeMap<String, BTreeSet<String>>;
 
     fn properties(&self) -> &Self::Properties {
-        self.0.properties()
+        &self.properties
     }
 
     fn properties_mut(&mut self) -> &mut Self::Properties {
-        self.0.properties_mut()
+        &mut self.properties
     }
 }
 
 #[test]
 fn smoke() {
-    let mut div = Div::with_children(vec![EmptyDiv]);
-    div.children_mut().push(EmptyDiv);
+    let mut div = Div::with_children(vec![Empty]);
+    div.children_mut().push(Empty);
     div.properties_mut().insert("test".into(), BTreeSet::new());
 }
+

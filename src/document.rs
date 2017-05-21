@@ -164,8 +164,8 @@ impl VDocument {
 
 #[test]
 fn create_element() {
+    let div = component::Div::<component::Empty>::new();
     let old_doc = VDocument::default();
-    let div = component::EmptyDiv;
     let new_doc = VDocument::from_component(div);
 
     let patches = old_doc.diff(&new_doc);
@@ -176,7 +176,7 @@ fn create_element() {
 
 #[test]
 fn delete_element() {
-    let div = component::EmptyDiv;
+    let div = component::Div::<component::Empty>::new();
     let old_doc = VDocument::from_component(div);
     let new_doc = VDocument::default();
 
