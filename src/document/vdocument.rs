@@ -1,10 +1,8 @@
 use std::collections::BTreeMap;
-use std::iter;
 use std::hash::{Hasher, Hash};
 use std::collections::hash_map::DefaultHasher;
 
 use ordermap;
-use stdweb::web::INode;
 
 use component::{self, Component};
 
@@ -183,28 +181,5 @@ fn delete_element() {
     let expected = vec![Patch::Reuse(ROOT_ID, ROOT_ID), Patch::Delete(NodeId(1))];
 
     assert_eq!(patches, expected);
-}
-
-#[derive(Debug, Default)]
-pub struct RenderedDocument<I> {
-    vdoc: VDocument,
-    dom_nodes: BTreeMap<NodeId, I>,
-}
-
-impl<I: INode> RenderedDocument<I> {
-    pub(crate) fn from_dom(node: I) -> Self {
-        let vdoc = VDocument::default();
-        let mut dom_nodes = BTreeMap::new();
-        dom_nodes.insert(vdoc.get_root(), node);
-        RenderedDocument { vdoc, dom_nodes }
-    }
-
-    pub(crate) fn patch(self, new_document: VDocument) -> Self {
-        unimplemented!();
-    }
-
-    fn associate(&mut self, id: NodeId, node: I) -> Option<I> {
-        self.dom_nodes.insert(id, node)
-    }
 }
 

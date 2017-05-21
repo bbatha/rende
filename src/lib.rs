@@ -5,6 +5,7 @@ pub mod component;
 pub mod document;
 
 use stdweb::web::{self, INode};
+use document::rendered_document::RenderedDocument;
 
 pub fn rende<C: component::Component>(id: &'static str, component: C) {
     stdweb::initialize();
@@ -12,7 +13,7 @@ pub fn rende<C: component::Component>(id: &'static str, component: C) {
     let entry_node = web::document().query_selector(&format!("#{}", id)).unwrap();
     entry_node.set_text_content("rendered from rust!");
 
-    let initial = document::RenderedDocument::from_dom(entry_node);
+    let initial = RenderedDocument::from_dom(entry_node);
     // loop {
     let user = document::VDocument::from_component(component);
     let _initial = initial.patch(user);
