@@ -75,7 +75,7 @@ impl Component for &'static str {
 pub struct Empty;
 
 impl Component for Empty {
-    fn render(&self, doc: &mut VDocument) -> Option<NodeId> {
+    fn render(&self, _doc: &mut VDocument) -> Option<NodeId> {
         None
     }
 }

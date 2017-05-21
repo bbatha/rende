@@ -1,12 +1,12 @@
-extern crate stdweb;
 extern crate rende;
 
-use stdweb::web::{document, INode};
+use rende::component::{Component, Div};
+use rende::rende;
 
 fn main() {
-    stdweb::initialize();
-
-    let entry_node = document().query_selector("#rende-entry").unwrap();
-    entry_node.set_text_content("rendered from rust!");
-    stdweb::event_loop();
+    let content = "Rende!";
+    // TODO(bbatha): need equalivalent of "innerText" for div
+    let div = Div::with_children(vec![content]);
+    rende("rende-entry", div);
 }
+
