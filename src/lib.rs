@@ -1,4 +1,3 @@
-extern crate ordermap;
 #[cfg( target = "asmjs-unknown-emscripten" )]
 extern crate stdweb;
 
