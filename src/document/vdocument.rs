@@ -62,7 +62,7 @@ enum VNode {
     Text(String),
 }
 
-#[derive(Debug)]
+#[derive(Debug, Eq, PartialEq)]
 pub struct VDocument {
     nodes: Vec<VNode>,
     keys: BTreeMap<ParentId, KeyMap>,
@@ -132,25 +132,24 @@ impl VDocument {
         let mut q = VecDeque::new();
         q.push_back((self.get_root(), new_document.get_root()));
         loop {
-            let (old_node, new_node) = if let Some(n) = q.pop_front() {
+            let (old_node_id, new_node_id) = if let Some(n) = q.pop_front() {
                 n
             } else {
                 break;
             };
 
-            let old_children = self.children.get(&old_node).unwrap_or(&empty_children);
+            // TODO(bbatha): do property comparisions, etc.
+            // assume rearrangement of nodes is the fastest way to patch the dom
+            patches.push(Patch::Reuse(old_node_id, new_node_id));
+
+            let old_children = self.children.get(&old_node_id).unwrap_or(&empty_children);
             let new_children = new_document
                 .children
-                .get(&new_node)
+                .get(&new_node_id)
                 .unwrap_or(&empty_children);
-
-            if old_children.is_empty() && new_children.is_empty() {
-                patches.push(Patch::Reuse(old_node, new_node));
-            }
 
             let mut old_children_iter = old_children.iter();
             let mut new_children_iter = new_children.iter();
-
             loop {
                 let old_child = old_children_iter.next().map(|(n, _)| *n);
                 let new_child = new_children_iter.next().map(|(n, _)| *n);
@@ -159,7 +158,6 @@ impl VDocument {
                     (None, Some(id)) => patches.push(Patch::Create(id)),
                     (Some(id), None) => patches.push(Patch::Delete(id)),
                     (Some(old_id), Some(new_id)) => {
-                        patches.push(Patch::Reuse(old_id, new_id));
                         q.push_back((old_id, new_id));
                     }
                     (None, None) => break,
@@ -179,6 +177,25 @@ fn create_element() {
 
     let patches = old_doc.diff(&new_doc);
     let expected = vec![Patch::Reuse(ROOT_ID, ROOT_ID), Patch::Create(NodeId(1))];
+
+    assert_eq!(patches, expected);
+}
+
+#[test]
+fn recurse_children() {
+    use component::*;
+    let div = Div::with_children(vec!["test"]);
+    let old_div = Div::with_children(vec![div.clone(), div.clone()]);
+    let new_div = Div::with_children(vec![Div::<Empty>::new()]);
+    let old_doc = VDocument::from_component(old_div);
+    let new_doc = VDocument::from_component(new_div);
+
+    let patches = old_doc.diff(&new_doc);
+    let expected = vec![Patch::Reuse(ROOT_ID, ROOT_ID),
+                        Patch::Reuse(NodeId(1), NodeId(1)),
+                        Patch::Delete(NodeId(4)),
+                        Patch::Reuse(NodeId(2), NodeId(2)),
+                        Patch::Delete(NodeId(3))];
 
     assert_eq!(patches, expected);
 }

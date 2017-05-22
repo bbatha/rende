@@ -1,4 +1,5 @@
 extern crate ordermap;
+#[cfg( target = "asmjs-unknown-emscripten" )]
 extern crate stdweb;
 
 mod document;
@@ -6,9 +7,12 @@ mod document;
 pub mod component;
 pub use document::vdocument::{VDocument, Key, NodeId};
 
+#[cfg( target = "asmjs-unknown-emscripten" )]
 use stdweb::web::{self, INode};
+#[cfg( target = "asmjs-unknown-emscripten" )]
 use document::rendered_document::RenderedDocument;
 
+#[cfg( target = "asmjs-unknown-emscripten" )]
 pub fn rende<C: component::Component>(id: &'static str, component: C) {
     stdweb::initialize();
 
