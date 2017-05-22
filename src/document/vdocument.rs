@@ -1,4 +1,4 @@
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, VecDeque};
 use std::hash::{Hasher, Hash};
 use std::collections::hash_map::DefaultHasher;
 
@@ -125,33 +125,45 @@ impl VDocument {
     fn diff(&self, new_document: &VDocument) -> Vec<Patch> {
         let mut patches = Vec::with_capacity(new_document.nodes.len());
 
-        let old_node = self.get_root();
-        let new_node = new_document.get_root();
-
-        patches.push(Patch::Reuse(old_node, new_node));
-
+        // used as default later
         let empty_children = ordermap::OrderMap::default();
-        let old_children = self.children.get(&old_node).unwrap_or(&empty_children);
-        let new_children = new_document
-            .children
-            .get(&new_node)
-            .unwrap_or(&empty_children);
 
-        let mut old_children_iter = old_children.iter();
-        let mut new_children_iter = new_children.iter();
-
+        // simple bfs traversal of the dom tree.
+        let mut q = VecDeque::new();
+        q.push_back((self.get_root(), new_document.get_root()));
         loop {
-            let old_child = old_children_iter.next().map(|(n, _)| *n);
-            let new_child = new_children_iter.next().map(|(n, _)| *n);
+            let (old_node, new_node) = if let Some(n) = q.pop_front() {
+                n
+            } else {
+                break;
+            };
 
-            match (old_child, new_child) {
-                (None, Some(id)) => patches.push(Patch::Create(id)),
-                (Some(id), None) => patches.push(Patch::Delete(id)),
-                (Some(old_id), Some(new_id)) => {
-                    patches.push(Patch::Reuse(old_id, new_id));
-                    // TODO: Recurse
+            let old_children = self.children.get(&old_node).unwrap_or(&empty_children);
+            let new_children = new_document
+                .children
+                .get(&new_node)
+                .unwrap_or(&empty_children);
+
+            if old_children.is_empty() && new_children.is_empty() {
+                patches.push(Patch::Reuse(old_node, new_node));
+            }
+
+            let mut old_children_iter = old_children.iter();
+            let mut new_children_iter = new_children.iter();
+
+            loop {
+                let old_child = old_children_iter.next().map(|(n, _)| *n);
+                let new_child = new_children_iter.next().map(|(n, _)| *n);
+
+                match (old_child, new_child) {
+                    (None, Some(id)) => patches.push(Patch::Create(id)),
+                    (Some(id), None) => patches.push(Patch::Delete(id)),
+                    (Some(old_id), Some(new_id)) => {
+                        patches.push(Patch::Reuse(old_id, new_id));
+                        q.push_back((old_id, new_id));
+                    }
+                    (None, None) => break,
                 }
-                (None, None) => break,
             }
         }
 
