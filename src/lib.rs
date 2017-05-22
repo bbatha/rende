@@ -1,8 +1,10 @@
 extern crate ordermap;
 extern crate stdweb;
 
+mod document;
+
 pub mod component;
-pub mod document;
+pub use document::vdocument::{VDocument, Key, NodeId};
 
 use stdweb::web::{self, INode};
 use document::rendered_document::RenderedDocument;
@@ -15,7 +17,7 @@ pub fn rende<C: component::Component>(id: &'static str, component: C) {
 
     let initial = RenderedDocument::from_dom(entry_node);
     // loop {
-    let user = document::VDocument::from_component(component);
+    let user = VDocument::from_component(component);
     let _initial = initial.patch(user);
     // TODO(bbatha): figure out how to compose our event loop with stdweb's
     // also add events...

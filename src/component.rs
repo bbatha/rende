@@ -1,4 +1,4 @@
-use document::{VDocument, NodeId, Key};
+use document::vdocument::{VDocument, NodeId, Key};
 
 use std::hash;
 use std::collections::{BTreeSet, BTreeMap};

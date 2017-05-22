@@ -1,4 +1,2 @@
-mod vdocument;
-pub(crate) mod rendered_document;
-
-pub use self::vdocument::{VDocument, NodeId, Key};
+pub mod vdocument;
+pub mod rendered_document;
