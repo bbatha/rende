@@ -1,7 +1,14 @@
 [package]
 name = "rende"
 version = "0.1.0"
-authors = ["Ben Batha <bhbatha@gmail.com>"]
+authors = ["Ben Batha <bhbatha@gmail.com>", "Joshua Fee <jfee@gmail.com>"]
+repository = "https://github.com/bbatha/rende"
+homepage = "https://github.com/bbatha/rende"
+license = "MIT/Apache-2.0"
+readme = "README.md"
+description = "A virtual DOM library targetting wasm"
+keywords = ["wasm", "virtual-dom", "web", "asmjs"]
+categories = ["web-programming"]
 
 [dependencies]
 stdweb = "^0.1"
